@@ -63,8 +63,8 @@ esMisterioso(Pokemon) :-
 
 % Predicados Auxiliares: 
 esUnico(Pokemon) :-
-    pokemon(Pokemon, Tipo),
-    not((pokemon(OtroPokemon, Tipo), OtroPokemon \= Pokemon)).
+    tipo(Pokemon, Tipo),
+    not((tipo(OtroPokemon, Tipo), OtroPokemon \= Pokemon)).
 
 nadieLoTiene(Pokemon) :-
     pokemon(Pokemon),
@@ -144,20 +144,20 @@ coeficienteSegun(dragon, 3).
 coeficienteSegun(Tipo, 1.5):-
     esBasico(Tipo).
 
+coeficienteSegun(Tipo, 1):-
+    Tipo \= dragon, 
+    not(esBasico(Tipo)).
+
 esBasico(agua).
 esBasico(fuego).
 esBasico(planta).
 esBasico(normal).
 
-coeficienteSegun(Tipo, 1):-
-    Tipo \= dragon, 
-    not(esBasico(Tipo)).
-
 % Punto 2
 
 capacidadOfensiva(Pokemon, Capacidad) :-
     pokemon(Pokemon),
-    findall(Danio, danioDe(Pokemon, PotenciaDeAtaque), Danios),
+    findall(Danio, danioDe(Pokemon, Danio), Danios),
     length(Danios, Capacidad).
 
 danioDe(Pokemon, Danio) :-

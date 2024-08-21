@@ -21,13 +21,13 @@
 % 3) Saber si un pokemon es misterioso, lo cual ocurre si es el único en su tipo o ningún entrenador lo tiene. 
 
 % Hechos: pokemon(Pokemon, Tipo)
-pokemon(pikachu, electrico).
-pokemon(charizard, fuego).
-pokemon(venusuar, planta).
-pokemon(blastoise, agua).
-pokemon(snorlax, normal).
-pokemon(rayquaza, dragon).
-pokemon(rayquaza, volador).
+tipo(pikachu, electrico).
+tipo(charizard, fuego).
+tipo(venusuar, planta).
+tipo(blastoise, agua).
+tipo(snorlax, normal).
+tipo(rayquaza, dragon).
+tipo(rayquaza, volador).
 
 % Hechos: tieneA(Entrenador, Pokemon)
 tieneA(ash, pikachu).
@@ -36,10 +36,16 @@ tieneA(misty, blastoise).
 tieneA(misty, venusuar).
 tieneA(misty, arceus).
 
+pokemon(Pokemon):-
+	tipo(Pokemon,_).
+
+pokemon(Pokemon):-
+	tieneA(_, Pokemon).
+
 % Punto 1:
 esDeMultipleTipo(Pokemon) :-
-    pokemon(Pokemon, UnTipo),
-    pokemon(Pokemon, OtroTipo),
+    tipo(Pokemon, UnTipo),
+    tipo(Pokemon, OtroTipo),
     UnTipo \= OtroTipo.
 
 % Punto 2:
@@ -48,13 +54,11 @@ esLegendario(Pokemon) :-
     nadieLoTiene(Pokemon).
 
 % Punto 3:
-esMisterioso(Pokemon) :-
-    esUnicoONingunEntrenadorLotiene(Pokemon).
 
-esUnicoONingunEntrenadorLotiene(Pokemon) :-
+esMisterioso(Pokemon) :-
     esUnico(Pokemon).
 
-esUnicoONingunEntrenadorLotiene(Pokemon) :-
+esMisterioso(Pokemon) :-
     nadieLoTiene(Pokemon).
 
 % Predicados Auxiliares: 
@@ -63,14 +67,8 @@ esUnico(Pokemon) :-
     not((pokemon(OtroPokemon, Tipo), OtroPokemon \= Pokemon)).
 
 nadieLoTiene(Pokemon) :-
-    esPokemon(Pokemon),
+    pokemon(Pokemon),
     not(tieneA(_, Pokemon)).
-
-esPokemon(Pokemon) :-
-    pokemon(Pokemon, _).
-
-esPokemon(Pokemon) :-
-    tieneA(_, Pokemon).
 
 % Segunda Parte: Movimientos
 
@@ -94,7 +92,7 @@ esPokemon(Pokemon) :-
 
 % Modelar en Prolog la información recopilada hasta ahora y modelar lo necesario para poder consultar:
 
-% El daño de ataque de un movimiento, lo cual se calcula de la siguiente forma:
+% 1) El daño de ataque de un movimiento, lo cual se calcula de la siguiente forma:
 % - En los movimientos físicos, es su potencia
 % - En los movimientos defensivos es 0
 % - En los movimientos especiales está dado por su potencia multiplicado por:
@@ -102,9 +100,9 @@ esPokemon(Pokemon) :-
 %   - 3 si es de tipo Dragón
 %   - 1 en cualquier otro caso
 
-% 1) La capacidad ofensiva de un pokémon, la cual está dada por la sumatoria de los
+% 2) La capacidad ofensiva de un pokémon, la cual está dada por la sumatoria de los
 % daños de ataque de los movimientos que puede usar.
-% 2) Si un entrenador es picante, lo cual ocurre si todos sus pokemons tienen una capacidad ofensiva
+% 3) Si un entrenador es picante, lo cual ocurre si todos sus pokemons tienen una capacidad ofensiva
 % total superior a 200 o son misteriosos.
 
 % Hechos: puedeUsar(Pokemon, NombreMov)
@@ -122,51 +120,58 @@ puedeUsar(arceus, placaje).
 puedeUsar(arceus, proteccion).
 puedeUsar(arceus, garraDragon).
 
-% Movimiento: movimiento(NombreMov, Categoria)
-movimiento(mordedura, tipoFisico(95)).
-movimiento(impactrueno, tipoEspecial(electrico, 40)).
-movimiento(garraDragon, tipoEspecial(dragon, 100)).
-movimiento(proteccion, tipoDefensivo(-0.10)).
-movimiento(placaje, tipoFisico(50)).
-movimiento(alivio, tipoDefensivo(1)).
+% Movimiento: movimiento(NombreMov, Clase)
+movimiento(mordedura, fisico(95)).
+movimiento(impactrueno, especial(electrico, 40)).
+movimiento(garraDragon, elpecial(dragon, 100)).
+movimiento(proteccion, defensivo(10)).
+movimiento(placaje, fisico(50)).
+movimiento(alivio, defensivo(100)).
 
 % Punto 1:
-capacidadOfensiva(Pokemon, Ofensiva) :-
-    findall(PotenciaDeAtaque, potenciaDeAtaqueDeUnMovDe(Pokemon, _, PotenciaDeAtaque), ListaDeAtaques),
-    length(ListaDeAtaques, Ofensiva).
 
-potenciaDeAtaqueDeUnMovDe(Pokemon, Movimiento, PotenciaDeAtaque) :-
+danio(Movimiento, Danio):-
+    movimiento(Movimiento, Clase), 
+    danioPorClase(Clase, Danio).
+
+danioPorClase(fisico(Potencia), Potencia). 
+danioPorClase(defensivo(_), 0). 
+danioPorClase(especial(Tipo, Potencia), Danio):-
+    coeficienteSegun(Tipo, Coeficiente), 
+    Danio is Potencia * Coeficiente.
+
+coeficienteSegun(dragon, 3).
+coeficienteSegun(Tipo, 1.5):-
+    esBasico(Tipo).
+
+esBasico(agua).
+esBasico(fuego).
+esBasico(planta).
+esBasico(normal).
+
+coeficienteSegun(Tipo, 1):-
+    Tipo \= dragon, 
+    not(esBasico(Tipo)).
+
+% Punto 2
+
+capacidadOfensiva(Pokemon, Capacidad) :-
+    pokemon(Pokemon),
+    findall(Danio, danioDe(Pokemon, PotenciaDeAtaque), Danios),
+    length(Danios, Capacidad).
+
+danioDe(Pokemon, Danio) :-
     puedeUsar(Pokemon, Movimiento),
-    movimiento(Movimiento, TipoDeMov),
-    potenciaDeAtaqueDelTipoDelMov(TipoDeMov, PotenciaDeAtaque).
+    danio(Movimiento, Danio).
 
-potenciaDeAtaqueDelTipoDelMov(tipoFisico(PotenciaDeAtaque), PotenciaDeAtaque).
-potenciaDeAtaqueDelTipoDelMov(tipoDefensivo(_), 0).
-
-potenciaDeAtaque(tipoEspecial(Tipo, PotenciaAtaqueBase), PotenciaAtacante) :-
-    multiplicadorPorTipo(Tipo, Multiplicador),
-    PotenciaAtacante is PotenciaAtaqueBase * Multiplicador.
-
-potenciaDeAtaque(tipoEspecial(Tipo, PotenciaAtacante), PotenciaAtacante) :-
-    not(multiplicadorPorTipo(Tipo, _)).
-
-multiplicadorPorTipo(dragon, 3).
-multiplicadorPorTipo(fuego, 1.5).
-multiplicadorPorTipo(agua, 1.5).
-multiplicadorPorTipo(planta, 1.5).
-multiplicadorPorTipo(normal, 1.5).
-
-% Punto 2:
+% Punto 3:
 esPicante(Entrenador) :-
     tieneA(Entrenador, _),
-    forall(tieneA(Entrenador, Pokemon), tieneUnaCapacidadOfensivaSupOEsMisterioso(Pokemon)).
+    forall(tieneA(Entrenador, Pokemon), cumplePicantez(Pokemon)).
 
-tieneUnaCapacidadOfensivaSupOEsMisterioso(Pokemon) :-
+cumplePicantez(Pokemon) :-
     esMisterioso(Pokemon).
 
-tieneUnaCapacidadOfensivaSupOEsMisterioso(Pokemon) :-
-    tieneUnaCapacidadOfensivaSup(Pokemon).
-
-tieneUnaCapacidadOfensivaSup(Pokemon) :-
-    potenciaDeAtaqueDeUnMovDe(Pokemon, _, PotenciaDeAtaque),
-    PotenciaAtacante > 200.
+cumplePicantez(Pokemon) :-
+    capacidadOfensiva(Pokemon, Capacidad),
+    Capacidad > 200.
